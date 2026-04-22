@@ -4,20 +4,15 @@ import org.springframework.web.bind.annotation.*;
 import org.springframework.web.client.RestTemplate;
 
 @RestController
-@CrossOrigin(origins = "*")
+@CrossOrigin
 public class ProteinController {
 
-    @GetMapping("/protein/{id}")
+    @GetMapping(value = "/protein/{id}", produces = "text/plain")
     public String getProtein(@PathVariable String id) {
 
         String url = "https://files.rcsb.org/view/" + id.toUpperCase() + ".pdb";
 
         RestTemplate restTemplate = new RestTemplate();
-
-        try {
-            return restTemplate.getForObject(url, String.class);
-        } catch (Exception e) {
-            return "ERROR: Protein not found";
-        }
+        return restTemplate.getForObject(url, String.class);
     }
 }
