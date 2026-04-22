@@ -4,13 +4,12 @@ import org.springframework.web.bind.annotation.*;
 import org.springframework.web.client.RestTemplate;
 
 @RestController
-@CrossOrigin
 public class ProteinController {
 
-    @GetMapping(value = "/protein/{id}", produces = "text/plain")
+    @GetMapping("/protein/{id}")
     public String getProtein(@PathVariable String id) {
 
-        String url = "https://files.rcsb.org/view/" + id.toUpperCase() + ".pdb";
+        String url = "https://files.rcsb.org/view/" + id + ".pdb";
 
         RestTemplate restTemplate = new RestTemplate();
         return restTemplate.getForObject(url, String.class);
