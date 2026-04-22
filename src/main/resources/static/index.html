@@ -37,23 +37,19 @@
 
         input {
             padding: 10px;
-            width: 220px;
+            width: 200px;
             border-radius: 6px;
             border: none;
+            margin: 5px;
         }
 
         button {
             padding: 10px 15px;
-            margin-left: 10px;
             border: none;
             border-radius: 6px;
             background: #22c55e;
             color: white;
             cursor: pointer;
-        }
-
-        button:hover {
-            background: #16a34a;
         }
 
         .style-buttons {
@@ -74,14 +70,11 @@
         .viewer-wrapper {
             flex: 2;
             height: 500px;
-            position: relative;
             background: white;
             border-radius: 10px;
-            overflow: hidden;
         }
 
         #viewer {
-            position: absolute;
             width: 100%;
             height: 100%;
         }
@@ -91,11 +84,6 @@
             background: #334155;
             padding: 15px;
             border-radius: 10px;
-        }
-
-        #loading {
-            text-align: center;
-            display: none;
         }
     </style>
 </head>
@@ -108,9 +96,11 @@
 
     <div class="card">
 
+        <!-- ✅ TWO INPUTS -->
         <div class="controls">
-            <input type="text" id="proteinId" placeholder="Enter PDB ID (e.g. 1CRN)">
-            <button onclick="loadProtein()">Load Protein</button>
+            <input id="protein1" placeholder="Protein 1 (e.g. 1CRN)">
+            <input id="protein2" placeholder="Protein 2 (e.g. 4HHB)">
+            <button onclick="loadProtein()">Compare</button>
         </div>
 
         <div class="style-buttons">
@@ -118,8 +108,6 @@
             <button onclick="setStyle('stick')">Stick</button>
             <button onclick="setStyle('sphere')">Sphere</button>
         </div>
-
-        <div id="loading">Loading protein...</div>
 
         <div class="main-content">
 
@@ -129,11 +117,7 @@
 
             <div class="info-panel">
                 <h3>Protein Info</h3>
-                <p><b>ID:</b> <span id="pdbId">-</span></p>
-                <p><b>Title:</b> <span id="title">-</span></p>
-                <p><b>Organism:</b> <span id="organism">-</span></p>
-                <p><b>Method:</b> <span id="method">-</span></p>
-                <p><b>Resolution:</b> <span id="resolution">-</span></p>
+                <p id="info">Load proteins to compare</p>
             </div>
 
         </div>
@@ -144,80 +128,64 @@
 
 <script>
 
-let viewer1, viewer2;
+let viewer;
 
 function loadProtein() {
 
-    let id1 = document.getElementById("proteinId").value.toUpperCase();
+    let p1 = document.getElementById("protein1").value.toUpperCase();
+    let p2 = document.getElementById("protein2").value.toUpperCase();
 
-    if (!id1) {
-        alert("Enter Protein ID");
+    if (!p1 || !p2) {
+        alert("Enter BOTH proteins");
         return;
     }
 
-    let id2 = prompt("Enter second protein ID");
+    viewer = $3Dmol.createViewer("viewer", {backgroundColor:"white"});
 
-    document.getElementById("loading").style.display = "block";
-    document.getElementById("viewer").innerHTML = "";
+    let base = "https://protein-analysis-tool.onrender.com/protein/";
 
-    setTimeout(() => {
-
-        document.getElementById("viewer").innerHTML =
-            '<div id="v1" style="width:50%;height:100%;float:left;"></div>' +
-            '<div id="v2" style="width:50%;height:100%;float:left;"></div>';
-
-        viewer1 = $3Dmol.createViewer("v1", {backgroundColor:"white"});
-        viewer2 = $3Dmol.createViewer("v2", {backgroundColor:"white"});
-
-        let base = "https://protein-analysis-tool.onrender.com/protein/";
-
-        fetch(base + id1)
-        .then(res => res.text())
-        .then(data => {
-            viewer1.addModel(data, "pdb");
-            viewer1.setStyle({}, {cartoon:{color:"spectrum"}});
-            viewer1.zoomTo();
-            viewer1.render();
-        });
-
-        if (id2) {
-            fetch(base + id2.toUpperCase())
-            .then(res => res.text())
-            .then(data => {
-                viewer2.addModel(data, "pdb");
-                viewer2.setStyle({}, {cartoon:{color:"spectrum"}});
-                viewer2.zoomTo();
-                viewer2.render();
-            });
-        }
-
-    }, 100);
-
-    fetch("https://data.rcsb.org/rest/v1/core/entry/" + id1)
-    .then(res => res.json())
-    .then(info => {
-        document.getElementById("pdbId").innerText = id1;
-        document.getElementById("title").innerText = info.struct?.title || "-";
-        document.getElementById("method").innerText = info.exptl?.[0]?.method || "-";
-        document.getElementById("resolution").innerText = info.rcsb_entry_info?.resolution_combined?.[0] || "-";
-        document.getElementById("organism").innerText =
-            info.rcsb_entity_source_organism?.[0]?.scientific_name || "-";
+    // 🔥 Protein 1 (BLUE)
+    fetch(base + p1)
+    .then(res => res.text())
+    .then(data => {
+        viewer.addModel(data, "pdb");
+        viewer.setStyle({model:0}, {cartoon:{color:"blue"}});
+        viewer.zoomTo();
+        viewer.render();
     });
 
-    document.getElementById("loading").style.display = "none";
+    // 🔥 Protein 2 (RED)
+    fetch(base + p2)
+    .then(res => res.text())
+    .then(data => {
+        viewer.addModel(data, "pdb");
+        viewer.setStyle({model:1}, {cartoon:{color:"red"}});
+        viewer.zoomTo();
+        viewer.render();
+    });
+
+    // INFO
+    document.getElementById("info").innerText =
+        "Comparing " + p1 + " (blue) vs " + p2 + " (red)";
 }
 
 function setStyle(type){
 
-    if(viewer1){
-        viewer1.setStyle({}, {[type]:{}});
-        viewer1.render();
+    if(!viewer) return;
+
+    if(type === "cartoon"){
+        viewer.setStyle({}, {cartoon:{}});
     }
 
-    if(viewer2){
-        viewer2.setStyle({}, {[type]:{}});
-        viewer2.render();
+    if(type === "stick"){
+        viewer.setStyle({}, {stick:{}});
     }
+
+    if(type === "sphere"){
+        viewer.setStyle({}, {sphere:{}});
+    }
+
+    viewer.render();
 }
 
 </script>
