@@ -1,9 +1,151 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Protein 3D Viewer</title>
+
+    <script src="https://3Dmol.csb.pitt.edu/build/3Dmol-min.js"></script>
+
+    <style>
+        body {
+            margin: 0;
+            font-family: Arial;
+            background: #0f172a;
+            color: white;
+        }
+
+        .container {
+            width: 95%;
+            max-width: 1300px;
+            margin: auto;
+            margin-top: 20px;
+        }
+
+        h1 {
+            text-align: center;
+        }
+
+        .card {
+            background: #1e293b;
+            padding: 20px;
+            border-radius: 12px;
+        }
+
+        .controls {
+            text-align: center;
+            margin-bottom: 10px;
+        }
+
+        input {
+            padding: 10px;
+            width: 220px;
+            border-radius: 6px;
+            border: none;
+        }
+
+        button {
+            padding: 10px 15px;
+            margin-left: 10px;
+            border: none;
+            border-radius: 6px;
+            background: #22c55e;
+            color: white;
+            cursor: pointer;
+        }
+
+        button:hover {
+            background: #16a34a;
+        }
+
+        .style-buttons {
+            text-align: center;
+            margin-bottom: 10px;
+        }
+
+        .style-buttons button {
+            background: #3b82f6;
+            margin: 5px;
+        }
+
+        .main-content {
+            display: flex;
+            gap: 20px;
+        }
+
+        .viewer-wrapper {
+            flex: 2;
+            height: 500px;
+            position: relative;
+            background: white;
+            border-radius: 10px;
+            overflow: hidden;
+        }
+
+        #viewer {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+        }
+
+        .info-panel {
+            flex: 1;
+            background: #334155;
+            padding: 15px;
+            border-radius: 10px;
+        }
+
+        #loading {
+            text-align: center;
+            display: none;
+        }
+    </style>
+</head>
+
+<body>
+
+<div class="container">
+
+    <h1>Protein 3D Viewer</h1>
+
+    <div class="card">
+
+        <div class="controls">
+            <input type="text" id="proteinId" placeholder="Enter PDB ID (e.g. 1CRN)">
+            <button onclick="loadProtein()">Load Protein</button>
+        </div>
+
+        <div class="style-buttons">
+            <button onclick="setStyle('cartoon')">Cartoon</button>
+            <button onclick="setStyle('stick')">Stick</button>
+            <button onclick="setStyle('sphere')">Sphere</button>
+        </div>
+
+        <div id="loading">Loading protein...</div>
+
+        <div class="main-content">
+
+            <div class="viewer-wrapper">
+                <div id="viewer"></div>
+            </div>
+
+            <div class="info-panel">
+                <h3>Protein Info</h3>
+                <p><b>ID:</b> <span id="pdbId">-</span></p>
+                <p><b>Title:</b> <span id="title">-</span></p>
+                <p><b>Organism:</b> <span id="organism">-</span></p>
+                <p><b>Method:</b> <span id="method">-</span></p>
+                <p><b>Resolution:</b> <span id="resolution">-</span></p>
+            </div>
+
+        </div>
+
+    </div>
+
+</div>
+
 <script>
 
 let viewer1, viewer2;
-let seq1 = "", seq2 = "";
 
-/* LOAD PROTEINS */
 function loadProtein() {
 
     let id1 = document.getElementById("proteinId").value.toUpperCase();
@@ -13,152 +155,72 @@ function loadProtein() {
         return;
     }
 
-    // OPTIONAL: second protein prompt (no UI change)
-    let id2 = prompt("Enter second protein ID for comparison (optional):");
+    let id2 = prompt("Enter second protein ID");
 
     document.getElementById("loading").style.display = "block";
     document.getElementById("viewer").innerHTML = "";
 
     setTimeout(() => {
 
-        // 🔥 CREATE TWO VIEWERS SIDE BY SIDE INSIDE SAME BOX
         document.getElementById("viewer").innerHTML =
             '<div id="v1" style="width:50%;height:100%;float:left;"></div>' +
             '<div id="v2" style="width:50%;height:100%;float:left;"></div>';
 
-        viewer1 = $3Dmol.createViewer("v1", { backgroundColor: "white" });
-        viewer2 = $3Dmol.createViewer("v2", { backgroundColor: "white" });
+        viewer1 = $3Dmol.createViewer("v1", {backgroundColor:"white"});
+        viewer2 = $3Dmol.createViewer("v2", {backgroundColor:"white"});
 
         let base = "https://protein-analysis-tool.onrender.com/protein/";
 
-        // ===== PROTEIN 1 =====
         fetch(base + id1)
         .then(res => res.text())
         .then(data => {
-
             viewer1.addModel(data, "pdb");
-            viewer1.setStyle({}, {cartoon: {color: "spectrum"}});
+            viewer1.setStyle({}, {cartoon:{color:"spectrum"}});
             viewer1.zoomTo();
             viewer1.render();
-
         });
 
-        // ===== PROTEIN 2 =====
         if (id2) {
             fetch(base + id2.toUpperCase())
             .then(res => res.text())
             .then(data => {
-
                 viewer2.addModel(data, "pdb");
-                viewer2.setStyle({}, {cartoon: {color: "spectrum"}});
+                viewer2.setStyle({}, {cartoon:{color:"spectrum"}});
                 viewer2.zoomTo();
                 viewer2.render();
-
             });
-
-            loadSequences(id1, id2);
         }
 
     }, 100);
 
-    // INFO (only first protein shown as before)
     fetch("https://data.rcsb.org/rest/v1/core/entry/" + id1)
     .then(res => res.json())
     .then(info => {
-
         document.getElementById("pdbId").innerText = id1;
-        document.getElementById("title").innerText =
-            info.struct?.title || "Not available";
-
-        document.getElementById("method").innerText =
-            info.exptl?.[0]?.method || "Not available";
-
-        document.getElementById("resolution").innerText =
-            info.rcsb_entry_info?.resolution_combined?.[0] || "Not available";
-
+        document.getElementById("title").innerText = info.struct?.title || "-";
+        document.getElementById("method").innerText = info.exptl?.[0]?.method || "-";
+        document.getElementById("resolution").innerText = info.rcsb_entry_info?.resolution_combined?.[0] || "-";
         document.getElementById("organism").innerText =
-            info.rcsb_entity_source_organism?.[0]?.scientific_name || "Not available";
-
+            info.rcsb_entity_source_organism?.[0]?.scientific_name || "-";
     });
 
     document.getElementById("loading").style.display = "none";
 }
 
-/* LOAD SEQUENCES */
-function loadSequences(id1, id2){
-
-    Promise.all([
-        fetch("https://data.rcsb.org/rest/v1/core/polymer_entity/"+id1+"/1").then(r=>r.json()),
-        fetch("https://data.rcsb.org/rest/v1/core/polymer_entity/"+id2+"/1").then(r=>r.json())
-    ])
-    .then(([d1, d2])=>{
-
-        seq1 = d1.entity_poly.pdbx_seq_one_letter_code.replace(/\s/g,"");
-        seq2 = d2.entity_poly.pdbx_seq_one_letter_code.replace(/\s/g,"");
-
-        showAlignment();
-    });
-}
-
-/* ALIGNMENT + DISTANCE */
-function showAlignment(){
-
-    let len = Math.min(seq1.length, seq2.length);
-
-    let a="", b="", mid="";
-    let diff = 0;
-
-    for(let i=0;i<len;i++){
-
-        if(seq1[i] === seq2[i]){
-            a += seq1[i];
-            b += seq2[i];
-            mid += "|";
-        } else {
-            a += seq1[i];
-            b += seq2[i];
-            mid += " ";
-            diff++;
-        }
-    }
-
-    let similarity = ((len-diff)/len*100).toFixed(2);
-    let distance = (diff/len).toFixed(3);
-
-    // CREATE RESULT BOX (no UI redesign, just append)
-    let result = document.createElement("div");
-    result.style.marginTop = "20px";
-    result.style.background = "#020617";
-    result.style.padding = "10px";
-    result.style.fontFamily = "monospace";
-    result.style.whiteSpace = "pre-wrap";
-
-    result.innerHTML =
-        a + "\n" + mid + "\n" + b +
-        "\n\nSimilarity: " + similarity + "%" +
-        "\nDistance: " + distance;
-
-    document.querySelector(".container").appendChild(result);
-}
-
-/* STYLE */
 function setStyle(type){
 
     if(viewer1){
-        viewer1.setStyle({}, {[type]:{color:"spectrum"}});
+        viewer1.setStyle({}, {[type]:{}});
         viewer1.render();
     }
 
     if(viewer2){
-        viewer2.setStyle({}, {[type]:{color:"spectrum"}});
+        viewer2.setStyle({}, {[type]:{}});
         viewer2.render();
     }
 }
 
-/* RESIZE */
-window.addEventListener("resize", () => {
-    if (viewer1) viewer1.resize();
-    if (viewer2) viewer2.resize();
-});
-
 </script>
+
+</body>
+</html>
