@@ -1,0 +1,261 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>Protein Analysis Tool</title>
+
+<script src="https://3Dmol.csb.pitt.edu/build/3Dmol-min.js"></script>
+
+<style>
+body {
+    margin:0;
+    font-family: Arial;
+    background:#0f172a;
+    color:white;
+}
+
+.container {
+    width:95%;
+    max-width:1200px;
+    margin:auto;
+}
+
+h1 {
+    text-align:center;
+    margin-top:20px;
+}
+
+.controls {
+    text-align:center;
+    margin:15px;
+}
+
+input {
+    padding:10px;
+    border-radius:6px;
+    border:none;
+    margin:5px;
+    width:250px;
+}
+
+button {
+    padding:10px 15px;
+    border:none;
+    border-radius:6px;
+    background:#22c55e;
+    color:white;
+    cursor:pointer;
+    margin:5px;
+}
+
+.viewer-section {
+    display:flex;
+    gap:20px;
+}
+
+.viewer-box {
+    flex:1;
+    height:400px;
+    background:white;
+    border-radius:10px;
+    position:relative;
+}
+
+.viewer {
+    position:absolute;
+    width:100%;
+    height:100%;
+}
+
+.align {
+    background:#020617;
+    padding:15px;
+    font-family: monospace;
+    margin-top:20px;
+    border-radius:10px;
+    overflow-x:auto;
+}
+
+.match { color:#22c55e; }
+.mismatch { color:#ef4444; }
+
+.info {
+    margin-top:10px;
+    background:#334155;
+    padding:10px;
+    border-radius:10px;
+}
+</style>
+</head>
+
+<body>
+
+<div class="container">
+
+<h1>Protein Analysis Tool</h1>
+
+<div class="controls">
+    <input id="p1" placeholder="Protein 1 (ID)">
+    <input id="p2" placeholder="Protein 2 (ID)">
+    <button onclick="loadProteins()">Load</button>
+</div>
+
+<div class="controls">
+    <button onclick="setStyle('cartoon')">Cartoon</button>
+    <button onclick="setStyle('stick')">Stick</button>
+    <button onclick="setStyle('sphere')">Sphere</button>
+</div>
+
+<div class="viewer-section">
+    <div class="viewer-box"><div id="viewer1" class="viewer"></div></div>
+    <div class="viewer-box"><div id="viewer2" class="viewer"></div></div>
+</div>
+
+<!-- INFO PANELS -->
+<div class="viewer-section">
+    <div style="flex:1"><div id="info1" class="info"></div></div>
+    <div style="flex:1"><div id="info2" class="info"></div></div>
+</div>
+
+<h3 style="margin-top:20px;">Sequence Alignment</h3>
+<div id="alignment" class="align"></div>
+
+<h3>Phylogenetic Distance</h3>
+<div id="phylo" class="info"></div>
+
+</div>
+
+<script>
+
+let viewer1, viewer2;
+let seqA = "", seqB = "";
+
+/* LOAD PROTEINS */
+function loadProteins(){
+
+    let id1 = document.getElementById("p1").value.toUpperCase();
+    let id2 = document.getElementById("p2").value.toUpperCase();
+
+    if(!id1 || !id2){
+        alert("Enter both protein IDs");
+        return;
+    }
+
+    document.getElementById("alignment").innerHTML = "Loading...";
+    document.getElementById("phylo").innerHTML = "";
+
+    /* VIEWER 1 */
+    viewer1 = $3Dmol.createViewer("viewer1",{backgroundColor:"white"});
+    fetch("http://localhost:8080/protein/"+id1)
+    .then(res=>res.text())
+    .then(data=>{
+        viewer1.addModel(data,"pdb");
+        viewer1.setStyle({}, {cartoon:{color:'spectrum'}});
+        viewer1.zoomTo();
+        viewer1.render();
+    });
+
+    /* VIEWER 2 */
+    viewer2 = $3Dmol.createViewer("viewer2",{backgroundColor:"white"});
+    fetch("http://localhost:8080/protein/"+id2)
+    .then(res=>res.text())
+    .then(data=>{
+        viewer2.addModel(data,"pdb");
+        viewer2.setStyle({}, {cartoon:{color:'spectrum'}});
+        viewer2.zoomTo();
+        viewer2.render();
+    });
+
+    loadSequences(id1, id2);
+
+    /* LOAD INFO */
+    loadInfo(id1, "info1");
+    loadInfo(id2, "info2");
+}
+
+/* LOAD PROTEIN INFO */
+function loadInfo(id, target){
+
+    fetch("https://data.rcsb.org/rest/v1/core/entry/"+id)
+    .then(res=>res.json())
+    .then(data=>{
+        document.getElementById(target).innerHTML =
+            "<h3>"+(data.struct?.title || id)+"</h3>" +
+            "<p>Method: "+(data.exptl?.[0]?.method || "N/A")+"</p>" +
+            "<p>Resolution: "+(data.rcsb_entry_info?.resolution_combined?.[0] || "N/A")+"</p>";
+    });
+}
+
+/* LOAD SEQUENCES */
+function loadSequences(id1, id2){
+
+    Promise.all([
+        fetch("https://data.rcsb.org/rest/v1/core/polymer_entity/"+id1+"/1").then(r=>r.json()),
+        fetch("https://data.rcsb.org/rest/v1/core/polymer_entity/"+id2+"/1").then(r=>r.json())
+    ])
+    .then(([data1, data2])=>{
+
+        seqA = data1.entity_poly.pdbx_seq_one_letter_code.replace(/\s/g,"");
+        seqB = data2.entity_poly.pdbx_seq_one_letter_code.replace(/\s/g,"");
+
+        runAlignment();
+    });
+}
+
+/* CLEAN 2-LINE ALIGNMENT */
+function runAlignment(){
+
+    let len = Math.min(seqA.length, seqB.length);
+
+    let line1 = "";
+    let line2 = "";
+    let mid   = "";
+
+    for(let i=0;i<len;i++){
+
+        if(seqA[i] === seqB[i]){
+            line1 += `<span class="match">${seqA[i]}</span>`;
+            line2 += `<span class="match">${seqB[i]}</span>`;
+            mid += "|";
+        } else {
+            line1 += `<span class="mismatch">${seqA[i]}</span>`;
+            line2 += `<span class="mismatch">${seqB[i]}</span>`;
+            mid += " ";
+        }
+    }
+
+    document.getElementById("alignment").innerHTML =
+        line1 + "<br>" + mid + "<br>" + line2;
+
+    let diff = 0;
+    for(let i=0;i<len;i++){
+        if(seqA[i] !== seqB[i]) diff++;
+    }
+
+    let dist = diff/len;
+
+    document.getElementById("phylo").innerHTML =
+        "<p>Distance: "+dist.toFixed(3)+"</p>" +
+        "<p>Similarity: "+((1-dist)*100).toFixed(2)+"%</p>";
+}
+
+/* STYLE SWITCH */
+function setStyle(type){
+
+    if(viewer1){
+        viewer1.setStyle({}, {});
+        viewer1.setStyle({}, {[type]:{color:'spectrum'}});
+        viewer1.render();
+    }
+
+    if(viewer2){
+        viewer2.setStyle({}, {});
+        viewer2.setStyle({}, {[type]:{color:'spectrum'}});
+        viewer2.render();
+    }
+}
+
+</script>
+
+</body>
+</html>
