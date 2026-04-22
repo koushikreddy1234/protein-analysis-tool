@@ -1,95 +1,258 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>Protein Viewer</title>
+    <title>Protein 3D Viewer</title>
 
-    <!-- 3Dmol library -->
     <script src="https://3Dmol.csb.pitt.edu/build/3Dmol-min.js"></script>
 
     <style>
         body {
+            margin: 0;
             font-family: Arial;
-            text-align: center;
-            background-color: #f5f5f5;
+            background: #0f172a;
+            color: white;
         }
 
-        #viewer1, #viewer2 {
-            width: 45%;
-            height: 500px;
-            display: inline-block;
-            margin: 10px;
-            border: 1px solid #ccc;
-            background: white;
+        .container {
+            width: 95%;
+            max-width: 1300px;
+            margin: auto;
+            margin-top: 20px;
+        }
+
+        h1 {
+            text-align: center;
+        }
+
+        .card {
+            background: #1e293b;
+            padding: 20px;
+            border-radius: 12px;
+        }
+
+        .controls {
+            text-align: center;
+            margin-bottom: 10px;
         }
 
         input {
-            padding: 8px;
-            margin: 10px;
-            width: 150px;
+            padding: 10px;
+            width: 220px;
+            border-radius: 6px;
+            border: none;
         }
 
         button {
-            padding: 10px 20px;
+            padding: 10px 15px;
+            margin-left: 10px;
+            border: none;
+            border-radius: 6px;
+            background: #22c55e;
+            color: white;
             cursor: pointer;
         }
+
+        button:hover {
+            background: #16a34a;
+        }
+
+        .style-buttons {
+            text-align: center;
+            margin-bottom: 10px;
+        }
+
+        .style-buttons button {
+            background: #3b82f6;
+            margin: 5px;
+        }
+
+        /* 🔥 MAIN LAYOUT */
+        .main-content {
+            display: flex;
+            gap: 20px;
+        }
+
+        /* 🔥 VIEWER FIX */
+        .viewer-wrapper {
+            flex: 2;
+            height: 500px;
+            min-height: 500px;
+            position: relative;
+            background: white;
+            border-radius: 10px;
+            overflow: hidden;
+        }
+
+        #viewer {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            top: 0;
+            left: 0;
+        }
+
+        /* INFO PANEL */
+        .info-panel {
+            flex: 1;
+            background: #334155;
+            padding: 15px;
+            border-radius: 10px;
+        }
+
+        #loading {
+            text-align: center;
+            display: none;
+        }
+
     </style>
 </head>
 
 <body>
 
-<h2>Protein Viewer</h2>
+<div class="container">
 
-<input type="text" id="id1" placeholder="Protein ID 1 (e.g. 1crn)">
-<input type="text" id="id2" placeholder="Protein ID 2 (e.g. 4hhb)">
+    <h1>Protein 3D Viewer</h1>
 
-<br>
+    <div class="card">
 
-<button onclick="loadProteins()">Load Proteins</button>
+        <div class="controls">
+            <input type="text" id="proteinId" placeholder="Enter PDB ID (e.g. 1CRN)">
+            <button onclick="loadProtein()">Load Protein</button>
+        </div>
 
-<br><br>
+        <div class="style-buttons">
+            <button onclick="setStyle('cartoon')">Cartoon</button>
+            <button onclick="setStyle('stick')">Stick</button>
+            <button onclick="setStyle('sphere')">Sphere</button>
+        </div>
 
-<div id="viewer1"></div>
-<div id="viewer2"></div>
+        <div id="loading">Loading protein...</div>
+
+        <div class="main-content">
+
+            <!-- VIEWER -->
+            <div class="viewer-wrapper">
+                <div id="viewer"></div>
+            </div>
+
+            <!-- INFO -->
+            <div class="info-panel">
+                <h3>Protein Info</h3>
+                <p><b>ID:</b> <span id="pdbId">-</span></p>
+                <p><b>Title:</b> <span id="title">-</span></p>
+                <p><b>Organism:</b> <span id="organism">-</span></p>
+                <p><b>Method:</b> <span id="method">-</span></p>
+                <p><b>Resolution:</b> <span id="resolution">-</span></p>
+            </div>
+
+        </div>
+
+    </div>
+
+</div>
 
 <script>
-function loadProteins() {
 
-    const id1 = document.getElementById("id1").value.trim();
-    const id2 = document.getElementById("id2").value.trim();
+let viewer;
 
-    if (!id1 || !id2) {
-        alert("Enter both protein IDs");
+function loadProtein() {
+
+    let id = document.getElementById("proteinId").value.toUpperCase();
+
+    if (!id) {
+        alert("Enter Protein ID");
         return;
     }
 
-    // Viewer 1
-    fetch("/protein/" + id1)
+    document.getElementById("loading").style.display = "block";
+
+    document.getElementById("viewer").innerHTML = "";
+
+    // 🔥 DELAY FIX (important)
+    setTimeout(() => {
+
+        viewer = $3Dmol.createViewer("viewer", {
+            backgroundColor: "white"
+        });
+
+        // BACKEND CALL
+        fetch("http://localhost:8080/protein/" + id)
         .then(res => res.text())
         .then(data => {
-            const viewer1 = $3Dmol.createViewer("viewer1", { backgroundColor: "white" });
 
-            viewer1.clear();
-            viewer1.addModel(data, "pdb");
-            viewer1.setStyle({}, { cartoon: { color: "spectrum" } });
-            viewer1.zoomTo();
-            viewer1.render();
+            viewer.addModel(data, "pdb");
+
+            viewer.setStyle({}, {cartoon: {color: "spectrum"}});
+
+            viewer.zoomTo();
+            viewer.render();
+
+            // 🔥 DOUBLE RESIZE FIX
+            viewer.resize();
+
+            setTimeout(() => {
+                viewer.resize();
+                viewer.zoomTo();
+                viewer.render();
+            }, 200);
+
         })
-        .catch(err => console.error("Error loading protein 1:", err));
+        .catch(() => {
+            alert("Error loading protein");
+        });
 
-    // Viewer 2
-    fetch("/protein/" + id2)
-        .then(res => res.text())
-        .then(data => {
-            const viewer2 = $3Dmol.createViewer("viewer2", { backgroundColor: "white" });
+    }, 100);
 
-            viewer2.clear();
-            viewer2.addModel(data, "pdb");
-            viewer2.setStyle({}, { cartoon: { color: "spectrum" } });
-            viewer2.zoomTo();
-            viewer2.render();
-        })
-        .catch(err => console.error("Error loading protein 2:", err));
+    // METADATA
+    fetch("https://data.rcsb.org/rest/v1/core/entry/" + id)
+    .then(res => res.json())
+    .then(info => {
+
+        document.getElementById("pdbId").innerText = id;
+        document.getElementById("title").innerText =
+            info.struct?.title || "Not available";
+
+        document.getElementById("method").innerText =
+            info.exptl?.[0]?.method || "Not available";
+
+        document.getElementById("resolution").innerText =
+            info.rcsb_entry_info?.resolution_combined?.[0] || "Not available";
+
+        document.getElementById("organism").innerText =
+            info.rcsb_entity_source_organism?.[0]?.scientific_name || "Not available";
+
+    });
+
+    document.getElementById("loading").style.display = "none";
 }
+
+function setStyle(type) {
+
+    if (!viewer) return;
+
+    if (type === "cartoon") {
+        viewer.setStyle({}, {cartoon: {color: "spectrum"}});
+    }
+
+    if (type === "stick") {
+        viewer.setStyle({}, {stick: {}});
+    }
+
+    if (type === "sphere") {
+        viewer.setStyle({}, {sphere: {}});
+    }
+
+    viewer.render();
+}
+
+// 🔥 WINDOW RESIZE FIX
+window.addEventListener("resize", () => {
+    if (viewer) {
+        viewer.resize();
+        viewer.render();
+    }
+});
+
 </script>
 
 </body>
