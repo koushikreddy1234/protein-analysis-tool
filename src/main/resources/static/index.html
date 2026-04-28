@@ -131,78 +131,52 @@ let viewer = null;
 
 function loadProtein() {
 
-    let id1 = document.getElementById("proteinId").value.toUpperCase();
-
-    let id2 = prompt("Enter second protein ID").toUpperCase();
+    let id1 = document.getElementById("protein1").value.toUpperCase();
+    let id2 = document.getElementById("protein2").value.toUpperCase();
 
     if (!id1 || !id2) {
-
-        alert("Enter both proteins");
-
+        alert("Enter BOTH Protein IDs");
         return;
-
     }
 
-    document.getElementById("loading").style.display = "block";
-
-    // ✅ IMPORTANT: create viewer ONLY ONCE
-
-    if (!viewer) {
-
-        viewer = $3Dmol.createViewer("viewer", {
-
-            backgroundColor: "white"
-
-        });
-
+    if (viewer) {
+        viewer.clear();
     } else {
-
-        viewer.clear(); // reset instead of recreating
-
+        viewer = $3Dmol.createViewer("viewer", {
+            backgroundColor: "white"
+        });
     }
 
     let base = "https://protein-analysis-tool.onrender.com/protein/";
 
-    // 🔵 Protein 1
+    Promise.all([
+        fetch(base + id1).then(res => res.text()),
+        fetch(base + id2).then(res => res.text())
+    ])
+    .then(([data1, data2]) => {
 
-    fetch(base + id1)
+        viewer.addModel(data1, "pdb");
+        viewer.addModel(data2, "pdb");
 
-    .then(res => res.text())
-
-    .then(data => {
-
-        viewer.addModel(data, "pdb");
-
-        viewer.setStyle({model: 0}, {cartoon: {color: "blue"}});
-
-        viewer.zoomTo();
-
-        viewer.render();
-
-    });
-
-    // 🔴 Protein 2
-
-    fetch(base + id2)
-
-    .then(res => res.text())
-
-    .then(data => {
-
-        viewer.addModel(data, "pdb");
-
-        viewer.setStyle({model: 1}, {cartoon: {color: "red"}});
+        viewer.setStyle({model:0}, {cartoon:{color:"blue"}});
+        viewer.setStyle({model:1}, {cartoon:{color:"red"}});
 
         viewer.zoomTo();
-
         viewer.render();
 
+        // 🔥 CRITICAL FIX
+        setTimeout(() => {
+            viewer.resize();
+            viewer.zoomTo();
+            viewer.render();
+        }, 200);
+
+    })
+    .catch(err => {
+        console.error(err);
+        alert("Error loading proteins");
     });
-
-    document.getElementById("loading").style.display = "none";
-
 }
-
 function setStyle(type) {
 
     if (!viewer) return;
