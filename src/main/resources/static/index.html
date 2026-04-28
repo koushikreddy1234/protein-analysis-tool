@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html>
 <head>
-<title>Protein 3D Viewer</title>
+<title>Protein Comparison Tool</title>
 
 <script src="https://3Dmol.csb.pitt.edu/build/3Dmol-min.js"></script>
 
@@ -55,14 +55,9 @@ button {
 
 .viewer-box {
     flex: 1;
-    height: 400px;
+    height: 350px;
     background: black;
     border-radius: 10px;
-}
-
-.viewer {
-    width: 100%;
-    height: 100%;
 }
 
 .info-box {
@@ -79,6 +74,10 @@ button {
     border-radius: 10px;
 }
 
+pre {
+    white-space: pre-wrap;
+    font-size: 12px;
+}
 </style>
 </head>
 
@@ -100,20 +99,22 @@ button {
 
 <div>
 <div id="viewer1" class="viewer-box"></div>
-<div class="info-box" id="info1">Protein 1 info</div>
+<div id="info1" class="info-box">Protein 1 info</div>
 </div>
 
 <div>
 <div id="viewer2" class="viewer-box"></div>
-<div class="info-box" id="info2">Protein 2 info</div>
+<div id="info2" class="info-box">Protein 2 info</div>
 </div>
 
 </div>
 
 <div class="result-box">
-<h3>Comparison</h3>
-<p><b>Sequence Similarity:</b> <span id="similarity">-</span></p>
-<p><b>Phylogenetic Distance:</b> <span id="distance">-</span></p>
+<h3>Sequence Alignment</h3>
+<pre id="alignment"></pre>
+
+<p><b>Similarity:</b> <span id="similarity"></span></p>
+<p><b>Phylogenetic Distance:</b> <span id="distance"></span></p>
 </div>
 
 </div>
@@ -123,17 +124,21 @@ button {
 
 let viewer1, viewer2;
 
-function loadProteins() {
+function loadProteins(){
 
 let id1 = document.getElementById("protein1").value.toUpperCase();
 let id2 = document.getElementById("protein2").value.toUpperCase();
+
+if(!id1 || !id2){
+    alert("Enter BOTH Protein IDs");
+    return;
+}
 
 let base = "https://protein-analysis-tool.onrender.com/protein/";
 
 viewer1 = $3Dmol.createViewer("viewer1",{backgroundColor:"black"});
 viewer2 = $3Dmol.createViewer("viewer2",{backgroundColor:"black"});
 
-// load structures
 Promise.all([
 fetch(base+id1).then(r=>r.text()),
 fetch(base+id2).then(r=>r.text())
@@ -148,58 +153,84 @@ viewer2.setStyle({}, {cartoon:{color:"orange"}});
 viewer1.zoomTo(); viewer1.render();
 viewer2.zoomTo(); viewer2.render();
 
-// 🔥 extract sequences
+// sequences
 let seq1 = extractSequence(p1);
 let seq2 = extractSequence(p2);
 
-// 🔥 compare
-let sim = similarity(seq1, seq2);
-document.getElementById("similarity").innerText = sim + "%";
-document.getElementById("distance").innerText = (1 - sim/100).toFixed(2);
+// alignment
+showAlignment(seq1, seq2);
 
 });
 
 // metadata
-fetch("https://data.rcsb.org/rest/v1/core/entry/"+id1)
-.then(r=>r.json()).then(d=>{
-document.getElementById("info1").innerHTML =
-"<b>"+d.struct.title+"</b><br>"+d.exptl[0].method;
-});
+loadInfo(id1, "info1");
+loadInfo(id2, "info2");
 
-fetch("https://data.rcsb.org/rest/v1/core/entry/"+id2)
-.then(r=>r.json()).then(d=>{
-document.getElementById("info2").innerHTML =
-"<b>"+d.struct.title+"</b><br>"+d.exptl[0].method;
+}
+
+function loadInfo(id, box){
+
+fetch("https://data.rcsb.org/rest/v1/core/entry/"+id)
+.then(r=>r.json())
+.then(d=>{
+document.getElementById(box).innerHTML =
+"<b>"+d.struct.title+"</b><br>" +
+"Method: "+d.exptl[0].method;
 });
 
 }
 
-// 🔥 extract sequence from PDB
+// extract sequence
 function extractSequence(pdb){
 
-let lines = pdb.split("\n");
 let seq = "";
 
-lines.forEach(l=>{
+pdb.split("\n").forEach(l=>{
 if(l.startsWith("SEQRES")){
-seq += l.substring(19).trim().replace(/\s+/g,"");
+seq += l.substring(19).replace(/\s+/g,"");
 }
 });
 
 return seq;
 }
 
-// 🔥 simple similarity
-function similarity(a,b){
+// alignment
+function showAlignment(a,b){
 
 let len = Math.min(a.length,b.length);
-let match = 0;
+
+let line1="", line2="", mid="";
+let match=0;
 
 for(let i=0;i<len;i++){
-if(a[i]===b[i]) match++;
+
+line1+=a[i];
+line2+=b[i];
+
+if(a[i]===b[i]){
+mid+="|";
+match++;
+}else{
+mid+=" ";
 }
 
-return ((match/len)*100).toFixed(2);
+}
+
+let formatted="";
+for(let i=0;i<len;i+=60){
+formatted+=line1.substring(i,i+60)+"\n";
+formatted+=mid.substring(i,i+60)+"\n";
+formatted+=line2.substring(i,i+60)+"\n\n";
+}
+
+document.getElementById("alignment").innerText = formatted;
+
+let sim = (match/len*100).toFixed(2);
+let dist = (1-match/len).toFixed(2);
+
+document.getElementById("similarity").innerText = sim+"%";
+document.getElementById("distance").innerText = dist;
+
 }
 
 </script>
