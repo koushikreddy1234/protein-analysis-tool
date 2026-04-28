@@ -67,12 +67,10 @@ button{
     background:black;
     border-radius:10px;
 
-    /* 🔥 FIX overflow */
     position:relative;
     overflow:hidden;
 }
 
-/* 🔥 FORCE CANVAS INSIDE */
 .viewer canvas{
     position:absolute !important;
     top:0;
@@ -93,8 +91,9 @@ button{
     background:#334155;
     padding:15px;
     border-radius:10px;
-    white-space:pre-wrap;
     font-family:monospace;
+    overflow-x:auto;
+    white-space:pre;
 }
 </style>
 </head>
@@ -157,11 +156,11 @@ return;
 
 let base="https://protein-analysis-tool.onrender.com/protein/";
 
-// clear previous
+// clear viewers
 document.getElementById("viewer1").innerHTML="";
 document.getElementById("viewer2").innerHTML="";
 
-// 🔥 CORRECT viewer creation
+// create viewers properly
 viewer1=$3Dmol.createViewer(
 document.getElementById("viewer1"),
 {backgroundColor:"black"}
@@ -172,7 +171,7 @@ document.getElementById("viewer2"),
 {backgroundColor:"black"}
 );
 
-// LOAD PROTEIN 1
+// protein 1
 fetch(base+id1)
 .then(r=>r.text())
 .then(data=>{
@@ -187,7 +186,7 @@ viewer1.render();
 },300);
 });
 
-// LOAD PROTEIN 2
+// protein 2
 fetch(base+id2)
 .then(r=>r.text())
 .then(data=>{
@@ -202,7 +201,7 @@ viewer2.render();
 },300);
 });
 
-// ALIGNMENT
+// alignment
 Promise.all([
 fetch(base+id1).then(r=>r.text()),
 fetch(base+id2).then(r=>r.text())
@@ -215,7 +214,7 @@ align(seq1,seq2);
 
 });
 
-// METADATA
+// info
 loadInfo(id1,"info1");
 loadInfo(id2,"info2");
 
@@ -256,13 +255,15 @@ function align(a,b){
 
 let len=Math.min(a.length,b.length);
 
-let l1="",l2="",mid="";
+let line1="";
+let line2="";
+let mid="";
 let match=0;
 
 for(let i=0;i<len;i++){
 
-l1+=a[i];
-l2+=b[i];
+line1+=a[i];
+line2+=b[i];
 
 if(a[i]===b[i]){
 mid+="|";
@@ -273,14 +274,12 @@ mid+=" ";
 
 }
 
-let formatted="";
-for(let i=0;i<len;i+=60){
-formatted+=l1.substring(i,i+60)+"\n";
-formatted+=mid.substring(i,i+60)+"\n";
-formatted+=l2.substring(i,i+60)+"\n\n";
-}
+let display =
+line1 + "\n" +
+mid   + "\n" +
+line2;
 
-document.getElementById("alignment").innerText=formatted;
+document.getElementById("alignment").innerText = display;
 
 let sim=(match/len*100).toFixed(2);
 let dist=(1-match/len).toFixed(2);
