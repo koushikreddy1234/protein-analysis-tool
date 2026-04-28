@@ -6,7 +6,7 @@
 <script src="https://3Dmol.csb.pitt.edu/build/3Dmol-min.js"></script>
 
 <style>
-body {
+body{
     margin:0;
     font-family:Arial;
     background:#0f172a;
@@ -30,7 +30,7 @@ h1{text-align:center;}
 
 .controls{
     text-align:center;
-    margin-bottom:10px;
+    margin-bottom:15px;
 }
 
 input{
@@ -63,8 +63,22 @@ button{
 
 .viewer{
     height:400px;
+    width:100%;
     background:black;
     border-radius:10px;
+
+    /* 🔥 FIX overflow */
+    position:relative;
+    overflow:hidden;
+}
+
+/* 🔥 FORCE CANVAS INSIDE */
+.viewer canvas{
+    position:absolute !important;
+    top:0;
+    left:0;
+    width:100% !important;
+    height:100% !important;
 }
 
 .info{
@@ -115,7 +129,6 @@ button{
 
 </div>
 
-<!-- ALIGNMENT -->
 <div class="alignment-box">
 <h3>Sequence Alignment</h3>
 <div id="alignment"></div>
@@ -129,7 +142,8 @@ button{
 
 <script>
 
-let viewer1, viewer2;
+let viewer1=null;
+let viewer2=null;
 
 function loadProteins(){
 
@@ -143,15 +157,22 @@ return;
 
 let base="https://protein-analysis-tool.onrender.com/protein/";
 
-// clear
+// clear previous
 document.getElementById("viewer1").innerHTML="";
 document.getElementById("viewer2").innerHTML="";
 
-// create viewers
-viewer1=$3Dmol.createViewer("viewer1",{backgroundColor:"black"});
-viewer2=$3Dmol.createViewer("viewer2",{backgroundColor:"black"});
+// 🔥 CORRECT viewer creation
+viewer1=$3Dmol.createViewer(
+document.getElementById("viewer1"),
+{backgroundColor:"black"}
+);
 
-// load protein 1
+viewer2=$3Dmol.createViewer(
+document.getElementById("viewer2"),
+{backgroundColor:"black"}
+);
+
+// LOAD PROTEIN 1
 fetch(base+id1)
 .then(r=>r.text())
 .then(data=>{
@@ -160,11 +181,13 @@ viewer1.setStyle({}, {cartoon:{color:"cyan"}});
 viewer1.zoomTo();
 viewer1.render();
 
-setTimeout(()=>viewer1.resize(),200);
+setTimeout(()=>{
+viewer1.resize();
+viewer1.render();
+},300);
 });
 
-// load protein 2
-setTimeout(()=>{
+// LOAD PROTEIN 2
 fetch(base+id2)
 .then(r=>r.text())
 .then(data=>{
@@ -173,11 +196,13 @@ viewer2.setStyle({}, {cartoon:{color:"orange"}});
 viewer2.zoomTo();
 viewer2.render();
 
-setTimeout(()=>viewer2.resize(),200);
-});
+setTimeout(()=>{
+viewer2.resize();
+viewer2.render();
 },300);
+});
 
-// alignment
+// ALIGNMENT
 Promise.all([
 fetch(base+id1).then(r=>r.text()),
 fetch(base+id2).then(r=>r.text())
@@ -190,13 +215,13 @@ align(seq1,seq2);
 
 });
 
-// metadata
+// METADATA
 loadInfo(id1,"info1");
 loadInfo(id2,"info2");
 
 }
 
-// ------------------
+// ----------------
 
 function loadInfo(id,box){
 
@@ -204,14 +229,14 @@ fetch("https://data.rcsb.org/rest/v1/core/entry/"+id)
 .then(r=>r.json())
 .then(d=>{
 document.getElementById(box).innerHTML=
-"<b>"+d.struct.title+"</b><br>"+
-"Method: "+d.exptl[0].method+"<br>"+
+"<b>"+(d.struct?.title||"No title")+"</b><br>"+
+"Method: "+(d.exptl?.[0]?.method||"N/A")+"<br>"+
 "Resolution: "+(d.rcsb_entry_info?.resolution_combined?.[0]||"N/A");
 });
 
 }
 
-// ------------------
+// ----------------
 
 function extractSequence(pdb){
 
@@ -225,7 +250,7 @@ return seq;
 
 }
 
-// ------------------
+// ----------------
 
 function align(a,b){
 
@@ -248,7 +273,6 @@ mid+=" ";
 
 }
 
-// format lines
 let formatted="";
 for(let i=0;i<len;i+=60){
 formatted+=l1.substring(i,i+60)+"\n";
