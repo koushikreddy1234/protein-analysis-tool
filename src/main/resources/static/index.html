@@ -7,76 +7,80 @@
 
 <style>
 body {
-    margin: 0;
-    font-family: Arial;
-    background: #0f172a;
-    color: white;
+    margin:0;
+    font-family:Arial;
+    background:#0f172a;
+    color:white;
 }
 
-.container {
-    width: 95%;
-    max-width: 1300px;
-    margin: auto;
-    margin-top: 20px;
+.container{
+    width:95%;
+    max-width:1400px;
+    margin:auto;
+    margin-top:20px;
 }
 
-.card {
-    background: #1e293b;
-    padding: 20px;
-    border-radius: 12px;
+h1{text-align:center;}
+
+.card{
+    background:#1e293b;
+    padding:20px;
+    border-radius:12px;
 }
 
-.controls {
-    text-align: center;
-    margin-bottom: 15px;
+.controls{
+    text-align:center;
+    margin-bottom:10px;
 }
 
-input {
-    padding: 10px;
-    width: 200px;
-    border-radius: 6px;
-    border: none;
-    margin: 5px;
+input{
+    padding:10px;
+    width:200px;
+    border-radius:6px;
+    border:none;
+    margin:5px;
 }
 
-button {
-    padding: 10px 15px;
-    border: none;
-    border-radius: 6px;
-    background: #22c55e;
-    color: white;
-    cursor: pointer;
+button{
+    padding:10px 15px;
+    border:none;
+    border-radius:6px;
+    background:#22c55e;
+    color:white;
+    cursor:pointer;
 }
 
-.main-content {
-    display: flex;
-    gap: 20px;
+.main{
+    display:flex;
+    gap:20px;
 }
 
-.viewer-box {
-    flex: 1;
-    height: 350px;
-    background: black;
-    border-radius: 10px;
+.viewer-box{
+    flex:1;
+    display:flex;
+    flex-direction:column;
 }
 
-.info-box {
-    margin-top: 10px;
-    background: #334155;
-    padding: 10px;
-    border-radius: 8px;
+.viewer{
+    height:400px;
+    background:black;
+    border-radius:10px;
 }
 
-.result-box {
-    margin-top: 20px;
-    background: #1e293b;
-    padding: 15px;
-    border-radius: 10px;
+.info{
+    background:#334155;
+    margin-top:10px;
+    padding:10px;
+    border-radius:10px;
 }
 
-pre {
-    white-space: pre-wrap;
-    font-size: 12px;
+.alignment-box{
+    margin-top:20px;
+    background:#334155;
+    padding:15px;
+    border-radius:10px;
+    white-space:pre-wrap;
+    font-family:monospace;
 }
 </style>
 </head>
@@ -85,36 +89,39 @@ pre {
 
 <div class="container">
 
-<h1 style="text-align:center;">Protein Comparison Tool</h1>
+<h1>Protein Comparison Tool</h1>
 
 <div class="card">
 
 <div class="controls">
-<input id="protein1" placeholder="Protein 1 (1CRN)">
-<input id="protein2" placeholder="Protein 2 (4HHB)">
+<input id="protein1" placeholder="Protein 1 (e.g. 1CRN)">
+<input id="protein2" placeholder="Protein 2 (e.g. 4HHB)">
 <button onclick="loadProteins()">Compare</button>
 </div>
 
-<div class="main-content">
+<div class="main">
 
-<div>
-<div id="viewer1" class="viewer-box"></div>
-<div id="info1" class="info-box">Protein 1 info</div>
+<!-- LEFT -->
+<div class="viewer-box">
+<div id="viewer1" class="viewer"></div>
+<div id="info1" class="info">Protein 1 info</div>
 </div>
 
-<div>
-<div id="viewer2" class="viewer-box"></div>
-<div id="info2" class="info-box">Protein 2 info</div>
+<!-- RIGHT -->
+<div class="viewer-box">
+<div id="viewer2" class="viewer"></div>
+<div id="info2" class="info">Protein 2 info</div>
 </div>
 
 </div>
 
-<div class="result-box">
+<!-- ALIGNMENT -->
+<div class="alignment-box">
 <h3>Sequence Alignment</h3>
-<pre id="alignment"></pre>
-
-<p><b>Similarity:</b> <span id="similarity"></span></p>
-<p><b>Phylogenetic Distance:</b> <span id="distance"></span></p>
+<div id="alignment"></div>
+<br>
+<b>Similarity:</b> <span id="similarity"></span><br>
+<b>Phylogenetic Distance:</b> <span id="distance"></span>
 </div>
 
 </div>
@@ -126,86 +133,111 @@ let viewer1, viewer2;
 
 function loadProteins(){
 
-let id1 = document.getElementById("protein1").value.toUpperCase();
-let id2 = document.getElementById("protein2").value.toUpperCase();
+let id1=document.getElementById("protein1").value.toUpperCase();
+let id2=document.getElementById("protein2").value.toUpperCase();
 
 if(!id1 || !id2){
-    alert("Enter BOTH Protein IDs");
-    return;
+alert("Enter both proteins");
+return;
 }
 
-let base = "https://protein-analysis-tool.onrender.com/protein/";
+let base="https://protein-analysis-tool.onrender.com/protein/";
 
-viewer1 = $3Dmol.createViewer("viewer1",{backgroundColor:"black"});
-viewer2 = $3Dmol.createViewer("viewer2",{backgroundColor:"black"});
+// clear
+document.getElementById("viewer1").innerHTML="";
+document.getElementById("viewer2").innerHTML="";
 
+// create viewers
+viewer1=$3Dmol.createViewer("viewer1",{backgroundColor:"black"});
+viewer2=$3Dmol.createViewer("viewer2",{backgroundColor:"black"});
+
+// load protein 1
+fetch(base+id1)
+.then(r=>r.text())
+.then(data=>{
+viewer1.addModel(data,"pdb");
+viewer1.setStyle({}, {cartoon:{color:"cyan"}});
+viewer1.zoomTo();
+viewer1.render();
+
+setTimeout(()=>viewer1.resize(),200);
+});
+
+// load protein 2
+setTimeout(()=>{
+fetch(base+id2)
+.then(r=>r.text())
+.then(data=>{
+viewer2.addModel(data,"pdb");
+viewer2.setStyle({}, {cartoon:{color:"orange"}});
+viewer2.zoomTo();
+viewer2.render();
+
+setTimeout(()=>viewer2.resize(),200);
+});
+},300);
+
+// alignment
 Promise.all([
 fetch(base+id1).then(r=>r.text()),
 fetch(base+id2).then(r=>r.text())
 ]).then(([p1,p2])=>{
 
-viewer1.addModel(p1,"pdb");
-viewer2.addModel(p2,"pdb");
+let seq1=extractSequence(p1);
+let seq2=extractSequence(p2);
 
-viewer1.setStyle({}, {cartoon:{color:"cyan"}});
-viewer2.setStyle({}, {cartoon:{color:"orange"}});
-
-viewer1.zoomTo(); viewer1.render();
-viewer2.zoomTo(); viewer2.render();
-
-// sequences
-let seq1 = extractSequence(p1);
-let seq2 = extractSequence(p2);
-
-// alignment
-showAlignment(seq1, seq2);
+align(seq1,seq2);
 
 });
 
 // metadata
-loadInfo(id1, "info1");
-loadInfo(id2, "info2");
+loadInfo(id1,"info1");
+loadInfo(id2,"info2");
 
 }
 
-function loadInfo(id, box){
+// ------------------
+
+function loadInfo(id,box){
 
 fetch("https://data.rcsb.org/rest/v1/core/entry/"+id)
 .then(r=>r.json())
 .then(d=>{
-document.getElementById(box).innerHTML =
-"<b>"+d.struct.title+"</b><br>" +
-"Method: "+d.exptl[0].method;
+document.getElementById(box).innerHTML=
+"<b>"+d.struct.title+"</b><br>"+
+"Method: "+d.exptl[0].method+"<br>"+
+"Resolution: "+(d.rcsb_entry_info?.resolution_combined?.[0]||"N/A");
 });
 
 }
 
-// extract sequence
+// ------------------
+
 function extractSequence(pdb){
 
-let seq = "";
-
+let seq="";
 pdb.split("\n").forEach(l=>{
 if(l.startsWith("SEQRES")){
-seq += l.substring(19).replace(/\s+/g,"");
+seq+=l.substring(19).replace(/\s+/g,"");
 }
 });
-
 return seq;
+
 }
 
-// alignment
-function showAlignment(a,b){
+// ------------------
 
-let len = Math.min(a.length,b.length);
+function align(a,b){
 
-let line1="", line2="", mid="";
+let len=Math.min(a.length,b.length);
+
+let l1="",l2="",mid="";
 let match=0;
 
 for(let i=0;i<len;i++){
 
-line1+=a[i];
-line2+=b[i];
+l1+=a[i];
+l2+=b[i];
 
 if(a[i]===b[i]){
 mid+="|";
@@ -216,20 +248,21 @@ mid+=" ";
 
 }
 
+// format lines
 let formatted="";
 for(let i=0;i<len;i+=60){
-formatted+=line1.substring(i,i+60)+"\n";
+formatted+=l1.substring(i,i+60)+"\n";
 formatted+=mid.substring(i,i+60)+"\n";
-formatted+=line2.substring(i,i+60)+"\n\n";
+formatted+=l2.substring(i,i+60)+"\n\n";
 }
 
-document.getElementById("alignment").innerText = formatted;
+document.getElementById("alignment").innerText=formatted;
 
-let sim = (match/len*100).toFixed(2);
-let dist = (1-match/len).toFixed(2);
+let sim=(match/len*100).toFixed(2);
+let dist=(1-match/len).toFixed(2);
 
-document.getElementById("similarity").innerText = sim+"%";
-document.getElementById("distance").innerText = dist;
+document.getElementById("similarity").innerText=sim+"%";
+document.getElementById("distance").innerText=dist;
 
 }
 
