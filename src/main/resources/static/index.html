@@ -127,68 +127,120 @@
 </div>
 
 <script>
-
-let viewer;
+let viewer = null;
 
 function loadProtein() {
 
-    let p1 = document.getElementById("protein1").value.toUpperCase();
-    let p2 = document.getElementById("protein2").value.toUpperCase();
+    let id1 = document.getElementById("proteinId").value.toUpperCase();
 
-    if (!p1 || !p2) {
-        alert("Enter BOTH proteins");
+    let id2 = prompt("Enter second protein ID").toUpperCase();
+
+    if (!id1 || !id2) {
+
+        alert("Enter both proteins");
+
         return;
+
     }
 
-    viewer = $3Dmol.createViewer("viewer", {backgroundColor:"white"});
+    document.getElementById("loading").style.display = "block";
+
+    // ✅ IMPORTANT: create viewer ONLY ONCE
+
+    if (!viewer) {
+
+        viewer = $3Dmol.createViewer("viewer", {
+
+            backgroundColor: "white"
+
+        });
+
+    } else {
+
+        viewer.clear(); // reset instead of recreating
+
+    }
 
     let base = "https://protein-analysis-tool.onrender.com/protein/";
 
-    // 🔥 Protein 1 (BLUE)
-    fetch(base + p1)
+    // 🔵 Protein 1
+
+    fetch(base + id1)
+
     .then(res => res.text())
+
     .then(data => {
+
         viewer.addModel(data, "pdb");
-        viewer.setStyle({model:0}, {cartoon:{color:"blue"}});
+
+        viewer.setStyle({model: 0}, {cartoon: {color: "blue"}});
+
         viewer.zoomTo();
+
         viewer.render();
+
     });
 
-    // 🔥 Protein 2 (RED)
-    fetch(base + p2)
+    // 🔴 Protein 2
+
+    fetch(base + id2)
+
     .then(res => res.text())
+
     .then(data => {
+
         viewer.addModel(data, "pdb");
-        viewer.setStyle({model:1}, {cartoon:{color:"red"}});
+
+        viewer.setStyle({model: 1}, {cartoon: {color: "red"}});
+
         viewer.zoomTo();
+
         viewer.render();
+
     });
 
-    // INFO
-    document.getElementById("info").innerText =
-        "Comparing " + p1 + " (blue) vs " + p2 + " (red)";
+    document.getElementById("loading").style.display = "none";
+
 }
 
-function setStyle(type){
+function setStyle(type) {
 
-    if(!viewer) return;
+    if (!viewer) return;
 
-    if(type === "cartoon"){
-        viewer.setStyle({}, {cartoon:{}});
+    if (type === "cartoon") {
+
+        viewer.setStyle({}, {cartoon: {color: "spectrum"}});
+
     }
 
-    if(type === "stick"){
-        viewer.setStyle({}, {stick:{}});
+    if (type === "stick") {
+
+        viewer.setStyle({}, {stick: {}});
+
     }
 
-    if(type === "sphere"){
-        viewer.setStyle({}, {sphere:{}});
+    if (type === "sphere") {
+
+        viewer.setStyle({}, {sphere: {}});
+
     }
 
     viewer.render();
+
 }
 
-</script>
+// resize fix
 
-</body>
-</html>
+window.addEventListener("resize", () => {
+
+    if (viewer) {
+
+        viewer.resize();
+
+        viewer.render();
+
+    }
+
+});
+
+</script>
